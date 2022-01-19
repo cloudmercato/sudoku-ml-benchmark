@@ -1,0 +1,133 @@
+import json
+import time
+import os
+import argparse
+import logging
+
+import tensorflow as tf
+
+from sudoku_ml.agent import Agent
+from sudoku_ml import datasets
+from sudoku_ml_benchmark import utils
+
+
+logger = logging.getLogger('sudoku_ml')
+tf_logger = logging.getLogger('tensorflow')
+
+parser = argparse.ArgumentParser()
+# Common
+parser.add_argument('--batch-size', type=int, default=32)
+# Training
+parser.add_argument('--epochs', type=int, default=2)
+parser.add_argument('--train-dataset-size', type=int, default=100000)
+parser.add_argument('--infer-dataset-size', type=int, default=100000)
+parser.add_argument('--infer-removed', type=int, default=10)
+# Inference
+# Model
+parser.add_argument('--model-path', default='sudoku_ml.models.DEFAULT_MODEL',
+                    help='Python path to the model to compile')
+parser.add_argument('--model-load-file', default=None,
+                    help='Model load file path (h5)')
+parser.add_argument('--model-save-file', default='model.h5',
+                    help='Model save file path (h5)')
+parser.add_argument('--log-dir', default=None,
+                    help='Tensorboard log directory')
+parser.add_argument('--tf-log-device', default=False, action="store_true",
+                    help='Determines whether TF compute device info is displayed.')
+parser.add_argument('--tf-dump-debug-info', default=False, action="store_true")
+parser.add_argument('--tf-profiler-port', default=0, type=int)
+parser.add_argument('--verbose', '-v', default=3, type=int)
+parser.add_argument('--tf-verbose', '-tfv', default=2, type=int)
+
+
+def main():
+    """
+    Main routine
+
+    Two main invocation modes:
+    train: to train the model
+    infer: to use the model to play the game
+
+    Invoke with --help for details
+    """
+
+    args = parser.parse_args()
+
+    log_verbose = 60 - (args.verbose*10)
+    log_handler = logging.StreamHandler()
+    log_handler.setLevel(log_verbose)
+    logger.addHandler(log_handler)
+    logger.setLevel(log_verbose)
+
+    tf_log_verbose = 60 - (args.tf_verbose*10)
+    tf_logger.setLevel(tf_log_verbose)
+    os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', str(args.tf_verbose))
+
+    logger.debug('Config: %s', vars(args))
+
+    tf.debugging.set_log_device_placement(args.tf_log_device)
+    if args.log_dir and args.tf_dump_debug_info:
+        tf.debugging.experimental.enable_dump_debug_info(
+            args.log_dir,
+            tensor_debug_mode="FULL_HEALTH",
+            circular_buffer_size=-1
+        )
+    if args.tf_profiler_port:
+        tf.profiler.experimental.server.start(args.tf_profiler_port)
+
+    agent = Agent(
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        model_path=args.model_path,
+        model_load_file=args.model_load_file,
+        model_save_file=args.model_save_file,
+        log_dir=args.log_dir,
+    )
+    output = {}
+
+    if not args.model_load_file:
+        train_dataset = datasets.generate_training_dataset(
+            count=args.train_dataset_size,
+            removed=args.infer_removed,
+        )
+        start_time = time.time()
+        agent.train(
+            runs=1,
+            dataset=train_dataset
+        )
+        train_time = time.time() - start_time
+        agent.save_model()
+        del train_dataset
+        output.update({
+            'train_time': train_time,
+            'train_speed': train_time / args.train_dataset_size,
+        })
+
+    infer_dataset = datasets.generate_dataset(
+        count=args.infer_dataset_size,
+        removed=args.infer_removed,
+    )
+    valid_count = 0
+    infer_times = []
+
+    x, y = infer_dataset
+    for i in range(args.infer_dataset_size):
+        start_time = time.time()
+        X, Y, value = agent.infer(x[i])
+        infer_time = time.time() - start_time
+        is_valid = y[i].reshape((9, 9))[X, Y] == value
+        valid_count += is_valid
+        infer_times.append(infer_time)
+    infer_time = sum(infer_times)
+
+    output.update({
+        'inference_valid': valid_count,
+        'inference_score': valid_count/args.infer_dataset_size,
+        'inference_time': infer_time,
+        'inference_speed': infer_time / args.infer_dataset_size,
+    })
+    print(json.dumps(output, cls=utils.NpEncoder))
+
+
+if __name__ == "__main__":
+    main()

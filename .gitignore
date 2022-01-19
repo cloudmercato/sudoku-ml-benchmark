@@ -1,0 +1,4 @@
+__pycache__
+*sw[pon]
+*.egg-info
+.ipynb_checkpoint
