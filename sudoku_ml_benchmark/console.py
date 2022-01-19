@@ -1,14 +1,17 @@
 import json
 import time
 import os
+import sys
 import argparse
 import logging
 
+import numpy as np
 import tensorflow as tf
 
 from sudoku_ml.agent import Agent
 from sudoku_ml import datasets
 from sudoku_ml_benchmark import utils
+from sudoku_ml_benchmark import __version__ as VERSION
 
 
 logger = logging.getLogger('sudoku_ml')
@@ -20,9 +23,10 @@ parser.add_argument('--batch-size', type=int, default=32)
 # Training
 parser.add_argument('--epochs', type=int, default=2)
 parser.add_argument('--train-dataset-size', type=int, default=100000)
+parser.add_argument('--train-removed', type=int, default=10)
+# Inference
 parser.add_argument('--infer-dataset-size', type=int, default=100000)
 parser.add_argument('--infer-removed', type=int, default=10)
-# Inference
 # Model
 parser.add_argument('--model-path', default='sudoku_ml.models.DEFAULT_MODEL',
                     help='Python path to the model to compile')
@@ -30,6 +34,7 @@ parser.add_argument('--model-load-file', default=None,
                     help='Model load file path (h5)')
 parser.add_argument('--model-save-file', default='model.h5',
                     help='Model save file path (h5)')
+# Log
 parser.add_argument('--log-dir', default=None,
                     help='Tensorboard log directory')
 parser.add_argument('--tf-log-device', default=False, action="store_true",
@@ -83,12 +88,23 @@ def main():
         model_save_file=args.model_save_file,
         log_dir=args.log_dir,
     )
-    output = {}
+    output = {
+        'version': VERSION,
+        'py_version': sys.version,
+        'np_version': np.version.full_version,
+        'tf_version': tf.version.VERSION,
+        # Training is optional
+        'train_time': None,
+        'train_speed': None,
+        'train_start_loss': None,
+        'train_end_loss': None,
+    }
+    output.update(vars(args))
 
     if not args.model_load_file:
         train_dataset = datasets.generate_training_dataset(
             count=args.train_dataset_size,
-            removed=args.infer_removed,
+            removed=args.train_removed,
         )
         start_time = time.time()
         agent.train(
@@ -100,7 +116,9 @@ def main():
         del train_dataset
         output.update({
             'train_time': train_time,
-            'train_speed': train_time / args.train_dataset_size,
+            'train_speed': args.train_dataset_size / train_time,
+            'train_start_loss': agent.model.history.history['loss'][0],
+            'train_end_loss': agent.model.history.history['loss'][-1],
         })
 
     infer_dataset = datasets.generate_dataset(
@@ -121,12 +139,12 @@ def main():
     infer_time = sum(infer_times)
 
     output.update({
-        'inference_valid': valid_count,
-        'inference_score': valid_count/args.infer_dataset_size,
-        'inference_time': infer_time,
-        'inference_speed': infer_time / args.infer_dataset_size,
+        'infer_valid': valid_count,
+        'infer_score': valid_count/args.infer_dataset_size,
+        'infer_time': infer_time,
+        'infer_speed': args.infer_dataset_size / infer_time,
     })
-    print(json.dumps(output, cls=utils.NpEncoder))
+    print(json.dumps(output, indent=2, cls=utils.NpEncoder))
 
 
 if __name__ == "__main__":
