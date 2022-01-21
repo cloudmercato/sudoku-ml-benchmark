@@ -1,7 +1,7 @@
 Tensorflow Sudoku Solver Benchmark
 ==================================
 
-Benchmark tool evaluating training and inference from `sudoku-ml <https://github.com/cloudmercato/sudoku-ml-benchmark>`_.
+Benchmark tool evaluating training and inference from `sudoku-ml <https://github.com/cloudmercato/sudoku-ml>`_.
 
 
 Install
