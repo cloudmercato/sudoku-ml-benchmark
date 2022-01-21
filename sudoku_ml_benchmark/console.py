@@ -27,6 +27,8 @@ parser.add_argument('--train-removed', type=int, default=10)
 # Inference
 parser.add_argument('--infer-dataset-size', type=int, default=100000)
 parser.add_argument('--infer-removed', type=int, default=10)
+# Generator
+parser.add_argument('--generator-processes', type=int, default=4)
 # Model
 parser.add_argument('--model-path', default='sudoku_ml.models.DEFAULT_MODEL',
                     help='Python path to the model to compile')
@@ -106,6 +108,7 @@ def main():
         train_dataset = datasets.generate_training_dataset(
             count=args.train_dataset_size,
             removed=args.train_removed,
+            processes=args.generator_processes,
         )
         start_time = time.time()
         agent.train(
@@ -125,6 +128,7 @@ def main():
     infer_dataset = datasets.generate_dataset(
         count=args.infer_dataset_size,
         removed=args.infer_removed,
+        processes=args.generator_processes,
     )
     valid_count = 0
     infer_times = []
