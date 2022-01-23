@@ -103,15 +103,22 @@ def main():
         'train_speed': None,
         'train_start_loss': None,
         'train_end_loss': None,
+        'train_dataset_gen_time': None,
     }
     output.update(vars(args))
 
     if not args.model_load_file:
+        logger.info("Generating training dataset")
+        start_time = time.time()
         train_dataset = datasets.generate_training_dataset(
             count=args.train_dataset_size,
             removed=args.train_removed,
             processes=args.generator_processes,
         )
+        train_dataset_gen_time = time.time() - start_time
+        logger.debug("Ended training dataset generation: %.2fsec", train_dataset_gen_time)
+
+        logger.info("Start training")
         start_time = time.time()
         agent.train(
             runs=1,
@@ -125,16 +132,23 @@ def main():
             'train_speed': args.train_dataset_size / train_time,
             'train_start_loss': agent.model.history.history['loss'][0],
             'train_end_loss': agent.model.history.history['loss'][-1],
+            'train_dataset_gen_time': train_dataset_gen_time,
         })
 
+    logger.info("Generating inference dataset")
+    start_time = time.time()
     infer_dataset = datasets.generate_dataset(
         count=args.infer_dataset_size,
         removed=args.infer_removed,
         processes=args.generator_processes,
     )
+    infer_dataset_gen_time = time.time() - start_time
+    logger.debug("Ended inference dataset generation: %.2fsec", infer_dataset_gen_time)
+
     valid_count = 0
     infer_times = []
 
+    logger.info("Start inference")
     x, y = infer_dataset
     for i in range(args.infer_dataset_size):
         start_time = time.time()
@@ -150,6 +164,7 @@ def main():
         'infer_score': valid_count/args.infer_dataset_size,
         'infer_time': infer_time,
         'infer_speed': args.infer_dataset_size / infer_time,
+        'infer_dataset_gen_time': infer_dataset_gen_time,
     })
     print(json.dumps(output, indent=2, cls=utils.NpEncoder))
 
