@@ -10,6 +10,7 @@ import tensorflow as tf
 
 from sudoku_ml.agent import Agent
 from sudoku_ml import datasets
+from sudoku_ml import __version__ as ML_VERSION
 from sudoku_ml_benchmark import utils
 from sudoku_ml_benchmark import __version__ as VERSION
 
@@ -93,6 +94,7 @@ def main():
     )
     output = {
         'version': VERSION,
+        'ml_version': ML_VERSION,
         'py_version': sys.version,
         'np_version': np.version.full_version,
         'tf_version': tf.version.VERSION,
