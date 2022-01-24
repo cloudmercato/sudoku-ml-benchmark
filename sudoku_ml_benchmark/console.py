@@ -10,6 +10,7 @@ import tensorflow as tf
 
 from sudoku_ml.agent import Agent
 from sudoku_ml import datasets
+from sudoku_ml import utils as ml_utils
 from sudoku_ml import __version__ as ML_VERSION
 from sudoku_ml_benchmark import utils
 from sudoku_ml_benchmark import __version__ as VERSION
@@ -24,10 +25,10 @@ parser.add_argument('--batch-size', type=int, default=32)
 # Training
 parser.add_argument('--epochs', type=int, default=2)
 parser.add_argument('--train-dataset-size', type=int, default=100000)
-parser.add_argument('--train-removed', type=int, default=10)
+parser.add_argument('--train-removed', type=str, default='10,20')
 # Inference
 parser.add_argument('--infer-dataset-size', type=int, default=100000)
-parser.add_argument('--infer-removed', type=int, default=10)
+parser.add_argument('--infer-removed', type=str, default='10,20')
 # Generator
 parser.add_argument('--generator-processes', type=int, default=4)
 # Model
@@ -49,16 +50,6 @@ parser.add_argument('--tf-verbose', '-tfv', default=2, type=int)
 
 
 def main():
-    """
-    Main routine
-
-    Two main invocation modes:
-    train: to train the model
-    infer: to use the model to play the game
-
-    Invoke with --help for details
-    """
-
     args = parser.parse_args()
 
     log_verbose = 60 - (args.verbose*10)
@@ -111,11 +102,12 @@ def main():
     output.update(vars(args))
 
     if not args.model_load_file:
+        train_removed = ml_utils.parse_remove(args.train_removed)
         logger.info("Generating training dataset")
         start_time = time.time()
         train_dataset = generator.generate_training_dataset(
             count=args.train_dataset_size,
-            removed=args.train_removed,
+            removed=train_removed,
         )
         train_dataset_gen_time = time.time() - start_time
         logger.debug("Ended training dataset generation: %.2fsec", train_dataset_gen_time)
@@ -137,11 +129,12 @@ def main():
             'train_dataset_gen_time': train_dataset_gen_time,
         })
 
+    infer_removed = ml_utils.parse_remove(args.infer_removed)
     logger.info("Generating inference dataset")
     start_time = time.time()
     infer_dataset = generator.generate_dataset(
         count=args.infer_dataset_size,
-        removed=args.infer_removed,
+        removed=infer_removed,
     )
     infer_dataset_gen_time = time.time() - start_time
     logger.debug("Ended inference dataset generation: %.2fsec", infer_dataset_gen_time)
