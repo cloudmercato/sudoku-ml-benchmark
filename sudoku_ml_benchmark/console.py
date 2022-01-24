@@ -92,6 +92,9 @@ def main():
         log_dir=args.log_dir,
         verbose=args.tf_verbose,
     )
+    generator = datasets.Generator(
+        processes=args.generator_processes,
+    )
     output = {
         'version': VERSION,
         'ml_version': ML_VERSION,
@@ -110,10 +113,9 @@ def main():
     if not args.model_load_file:
         logger.info("Generating training dataset")
         start_time = time.time()
-        train_dataset = datasets.generate_training_dataset(
+        train_dataset = generator.generate_training_dataset(
             count=args.train_dataset_size,
             removed=args.train_removed,
-            processes=args.generator_processes,
         )
         train_dataset_gen_time = time.time() - start_time
         logger.debug("Ended training dataset generation: %.2fsec", train_dataset_gen_time)
@@ -137,10 +139,9 @@ def main():
 
     logger.info("Generating inference dataset")
     start_time = time.time()
-    infer_dataset = datasets.generate_dataset(
+    infer_dataset = generator.generate_dataset(
         count=args.infer_dataset_size,
         removed=args.infer_removed,
-        processes=args.generator_processes,
     )
     infer_dataset_gen_time = time.time() - start_time
     logger.debug("Ended inference dataset generation: %.2fsec", infer_dataset_gen_time)
