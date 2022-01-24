@@ -31,6 +31,7 @@ parser.add_argument('--infer-dataset-size', type=int, default=100000)
 parser.add_argument('--infer-removed', type=str, default='10,20')
 # Generator
 parser.add_argument('--generator-processes', type=int, default=4)
+parser.add_argument('--dataset-path', type=str, default=None)
 # Model
 parser.add_argument('--model-path', default='sudoku_ml.models.DEFAULT_MODEL',
                     help='Python path to the model to compile')
@@ -83,9 +84,15 @@ def main():
         log_dir=args.log_dir,
         verbose=args.tf_verbose,
     )
-    generator = datasets.Generator(
-        processes=args.generator_processes,
-    )
+    if args.dataset_path:
+        generator = datasets.FromFileGenerator(
+            fd=args.dataset_path,
+        )
+    else:
+        generator = datasets.Generator(
+            processes=args.generator_processes,
+        )
+
     output = {
         'version': VERSION,
         'ml_version': ML_VERSION,
