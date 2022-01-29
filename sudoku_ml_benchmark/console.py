@@ -18,10 +18,21 @@ from sudoku_ml_benchmark import __version__ as VERSION
 logger = logging.getLogger('sudoku_ml')
 tf_logger = logging.getLogger('tensorflow')
 
+PRECISON_POLICIES = (
+    'mixed_float16',
+    'mixed_bfloat16',
+    'float16',
+    'float32',
+    'float64',
+)
+
 parser = argparse.ArgumentParser()
 # Common
 parser.add_argument('--batch-size', type=int, default=32)
 parser.add_argument('--tpu', required=False, default=None)
+parser.add_argument('--enable-xla', default=False, action="store_true")
+parser.add_argument('--precision-policy', default=None, choices=PRECISON_POLICIES)
+parser.add_argument('--optimize-model', default=False, action="store_true")
 # Training
 parser.add_argument('--epochs', type=int, default=2)
 parser.add_argument('--train-dataset-size', type=int, default=100000)
@@ -82,6 +93,11 @@ def main():
         strategy = tf.distribute.TPUStrategy(resolver)
         scope = strategy.scope()
         scope.__enter__()
+
+    if args.precision_policy:
+        tf.keras.mixed_precision.set_global_policy(args.precision_policy)
+    if args.enable_xla:
+        tf.config.optimizer.set_jit(True)
 
     from sudoku_ml.agent import Agent
     agent = Agent(
