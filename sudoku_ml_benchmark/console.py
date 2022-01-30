@@ -8,7 +8,6 @@ import logging
 import numpy as np
 import tensorflow as tf
 
-from sudoku_ml.agent import Agent
 from sudoku_ml import datasets
 from sudoku_ml import utils as ml_utils
 from sudoku_ml import __version__ as ML_VERSION
@@ -22,6 +21,7 @@ tf_logger = logging.getLogger('tensorflow')
 parser = argparse.ArgumentParser()
 # Common
 parser.add_argument('--batch-size', type=int, default=32)
+parser.add_argument('--tpu', required=False, default=None)
 # Training
 parser.add_argument('--epochs', type=int, default=2)
 parser.add_argument('--train-dataset-size', type=int, default=100000)
@@ -75,6 +75,15 @@ def main():
     if args.tf_profiler_port:
         tf.profiler.experimental.server.start(args.tf_profiler_port)
 
+    if args.tpu is not None:
+        resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu=args.tpu)
+        tf.config.experimental_connect_to_cluster(resolver)
+        tf.tpu.experimental.initialize_tpu_system(resolver)
+        strategy = tf.distribute.TPUStrategy(resolver)
+        scope = strategy.scope()
+        scope.__enter__()
+
+    from sudoku_ml.agent import Agent
     agent = Agent(
         batch_size=args.batch_size,
         epochs=args.epochs,
