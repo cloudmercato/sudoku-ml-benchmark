@@ -65,7 +65,7 @@ Dockerfile for classic Tensorflow and the GPU version are available: ::
   
   # For GPU
   docker build -f Dockerfile-gpu -t sudoku-ml-bench-gpu .
-  docker run --gpus all -it sudoku-ml-bench-gpu
+  docker run --gpus all --ipc=host -it sudoku-ml-bench-gpu
   # Add -e TF_CPP_MIN_LOG_LEVEL=3 to catch only the JSON output
   
 The commands above will run a training, then save an inference. You can mount a volume on `/models/` to keep it. In the same idea you can mount a volume on `/log_dir/`, to retrive the Tensorboard data.
