@@ -8,7 +8,7 @@ RUN mkdir -p /models/
 
 RUN pip install https://github.com/cloudmercato/sudoku-game/archive/refs/heads/master.zip
 RUN pip install https://github.com/cloudmercato/sudoku-ml/archive/refs/heads/master.zip
-RUN python setup.py develop
+RUN pip install .
 
 VOLUME /log_dir/
 VOLUME /models/
